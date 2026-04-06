@@ -1,6 +1,4 @@
-# Title
-
-OS Process Manager: A Modular Scheduler & IPC Simulator in C
+# OS Process Manager
 
 # 🌟 Highlight
 
