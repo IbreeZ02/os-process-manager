@@ -1,0 +1,479 @@
+
+S<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Scheduler Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --bg: #0d0f14;
+            --surface: #13161e;
+            --surface2: #1a1e28;
+            --border: #252a38;
+            --accent: #4af0a0;
+            --accent2: #4ab4f0;
+            --accent3: #f0a04a;
+            --danger: #f05a4a;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+        header {
+            display: flex; align-items: center; gap: 16px;
+            padding: 20px 32px; border-bottom: 1px solid var(--border); background: var(--surface);
+        }
+        header h1 { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--accent); letter-spacing: 0.04em; }
+        header span { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+        .upload-zone {
+            display: flex; gap: 16px; padding: 24px 32px; flex-wrap: wrap;
+            border-bottom: 1px solid var(--border); background: var(--surface);
+        }
+        .upload-card {
+            flex: 1; min-width: 200px; border: 1px dashed var(--border); border-radius: 6px;
+            padding: 16px 20px; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative;
+        }
+        .upload-card:hover { border-color: var(--accent); background: rgba(74,240,160,0.04); }
+        .upload-card.loaded { border-color: var(--accent); border-style: solid; }
+        .upload-card input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .uc-icon { font-size: 20px; margin-bottom: 6px; color: var(--muted); }
+        .upload-card.loaded .uc-icon { color: var(--accent); }
+        .uc-label { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .uc-desc { font-size: 12px; color: var(--muted); }
+        .uc-fname { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-top: 6px; }
+
+        main { padding: 32px; display: flex; flex-direction: column; gap: 40px; max-width: 1400px; margin: 0 auto; }
+        .section { display: none; }
+        .section.visible { display: block; }
+
+        .section-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .section-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; }
+        .section-badge { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; background: var(--surface2); color: var(--muted); letter-spacing: 0.06em; }
+
+        /* STATS */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; margin-bottom: 28px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+        .stat-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+        .stat-value { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--accent); }
+        .stat-value.blue { color: var(--accent2); }
+        .stat-value.orange { color: var(--accent3); }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+        thead th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--surface2); }
+        tbody td { padding: 9px 14px; color: var(--text); white-space: nowrap; }
+        td.pid  { color: var(--accent2); font-weight: 600; }
+        td.num  { color: var(--accent); }
+        td.pri  { color: var(--accent3); }
+        td.wait { color: #a78bfa; }
+        td.turn { color: #f472b6; }
+
+        /* GANTT */
+        .gantt-toolbar { display: flex; gap: 8px; margin-bottom: 14px; }
+        .view-btn {
+            font-family: var(--mono); font-size: 11px; padding: 5px 14px; border-radius: 4px;
+            border: 1px solid var(--border); background: transparent; color: var(--muted);
+            cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em;
+        }
+        .view-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+        .view-btn.active { background: var(--accent2); border-color: var(--accent2); color: #0d0f14; font-weight: 600; }
+        .gantt-view { display: none; }
+        .gantt-view.active { display: block; }
+        .gantt-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+
+        /* WFG */
+        .wfg-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; display: flex; justify-content: center; }
+        .wfg-legend { display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .deadlock-banner { background: rgba(240,90,74,0.12); border: 1px solid var(--danger); border-radius: 6px; padding: 10px 16px; font-family: var(--mono); font-size: 12px; color: var(--danger); margin-bottom: 16px; }
+        .empty-notice { text-align: center; padding: 40px; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+        .tooltip { position: fixed; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-family: var(--mono); font-size: 11px; color: var(--text); pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 1000; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>⬡ SCHEDULER VIZ</h1>
+    <span>Process Scheduler Simulation Visualizer</span>
+</header>
+
+<div class="upload-zone">
+    <div class="upload-card" id="card-gantt">
+        <input type="file" accept=".json" id="file-gantt"/>
+        <div class="uc-icon">📊</div>
+        <div class="uc-label">Gantt</div>
+        <div class="uc-desc">gantt.json</div>
+        <div class="uc-fname" id="fname-gantt"></div>
+    </div>
+    <div class="upload-card" id="card-stats">
+        <input type="file" accept=".json" id="file-stats"/>
+        <div class="uc-icon">📋</div>
+        <div class="uc-label">Statistics</div>
+        <div class="uc-desc">stats.json</div>
+        <div class="uc-fname" id="fname-stats"></div>
+    </div>
+    <div class="upload-card" id="card-wfg">
+        <input type="file" accept=".json" id="file-wfg"/>
+        <div class="uc-icon">🔗</div>
+        <div class="uc-label">WFG (optional)</div>
+        <div class="uc-desc">wfg_before_recovery.json</div>
+        <div class="uc-fname" id="fname-wfg"></div>
+    </div>
+</div>
+
+<main>
+
+    <!-- STATS -->
+    <section class="section" id="sec-stats">
+        <div class="section-header">
+            <span class="section-title">Process Statistics</span>
+            <span class="section-badge" id="badge-algo">–</span>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>PID</th><th>Arrival</th><th>Burst</th><th>Priority</th>
+                    <th>Finish</th><th>Turnaround</th><th>Waiting</th>
+                </tr></thead>
+                <tbody id="stats-tbody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- GANTT -->
+    <section class="section" id="sec-gantt">
+        <div class="section-header">
+            <span class="section-title">Gantt Chart</span>
+            <span class="section-badge" id="badge-gantt">–</span>
+        </div>
+        <div class="gantt-toolbar">
+            <button class="view-btn active" id="btn-multi"  onclick="switchView('multi')">Per-Process Rows</button>
+            <button class="view-btn"        id="btn-single" onclick="switchView('single')">Single Timeline</button>
+        </div>
+        <div class="gantt-view active" id="view-multi">
+            <div class="gantt-scroll" id="scroll-multi"></div>
+        </div>
+        <div class="gantt-view" id="view-single">
+            <div class="gantt-scroll" id="scroll-single"></div>
+        </div>
+    </section>
+
+    <!-- WFG -->
+    <section class="section" id="sec-wfg">
+        <div class="section-header">
+            <span class="section-title">Wait-For Graph — Deadlock</span>
+            <span class="section-badge" id="badge-wfg">–</span>
+        </div>
+        <div id="deadlock-banner" class="deadlock-banner" style="display:none">
+            ⚠ DEADLOCK DETECTED — cycle found in wait-for graph
+        </div>
+        <div class="wfg-wrap" id="wfg-wrap"></div>
+        <div class="wfg-legend" id="wfg-legend"></div>
+    </section>
+
+</main>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const tip = $('tooltip');
+    document.addEventListener('mousemove', e => { tip.style.left = (e.clientX+14)+'px'; tip.style.top = (e.clientY-10)+'px'; });
+    function showTip(html) { tip.innerHTML = html; tip.style.opacity = 1; }
+    function hideTip()     { tip.style.opacity = 0; }
+
+    // ── Upload wiring ─────────────────────────────────────────────────────────────
+    function wireUpload(fileId, cardId, fnameId, handler) {
+        $(fileId).addEventListener('change', e => {
+            const file = e.target.files[0]; if (!file) return;
+            $(fnameId).textContent = file.name;
+            $(cardId).classList.add('loaded');
+            const r = new FileReader();
+            r.onload = ev => { try { handler(JSON.parse(ev.target.result)); } catch(x) { alert('Bad JSON: '+file.name); } };
+            r.readAsText(file);
+        });
+    }
+    wireUpload('file-stats', 'card-stats', 'fname-stats', renderStats);
+    wireUpload('file-gantt', 'card-gantt', 'fname-gantt', renderGantt);
+    wireUpload('file-wfg',   'card-wfg',   'fname-wfg',   renderWFG);
+
+    // ── View toggle ───────────────────────────────────────────────────────────────
+    function switchView(which) {
+        ['multi','single'].forEach(v => {
+            $('view-'+v).classList.toggle('active', v===which);
+            $('btn-'+v).classList.toggle('active',  v===which);
+        });
+    }
+
+    // ── STATS ─────────────────────────────────────────────────────────────────────
+    function renderStats(d) {
+        $('sec-stats').classList.add('visible');
+        $('badge-algo').textContent = d.algorithm + (d.algorithm==='RR' ? ' · Q='+d.quantum : '');
+
+        $('stats-grid').innerHTML = [
+            {l:'Total Procs',    v: d.total_processes,                     c:''},
+            {l:'Completed',      v: d.completed_processes,                  c:''},
+            {l:'Ctx Switches',   v: d.context_switches,                     c:'blue'},
+            {l:'Avg Wait',       v: (d.avg_waiting_time    ??0).toFixed(2), c:'orange'},
+            {l:'Avg Turnaround', v: (d.avg_turnaround_time ??0).toFixed(2), c:'orange'},
+            {l:'Syscalls',       v: d.syscall_count ?? '–',                 c:'blue'},
+            {l:'IPC Messages',   v: d.ipc_count     ?? '–',                 c:'blue'},
+        ].map(m=>`<div class="stat-card"><div class="stat-label">${m.l}</div><div class="stat-value ${m.c}">${m.v}</div></div>`).join('');
+
+        $('stats-tbody').innerHTML = (d.processes||[]).map(p=>
+            `<tr>
+      <td class="pid">P${p.pid}</td>
+      <td class="num">${p.arrival}</td>
+      <td class="num">${p.burst}</td>
+      <td class="pri">${p.priority}</td>
+      <td class="num">${p.finish}</td>
+      <td class="turn">${p.turnaround}</td>
+      <td class="wait">${p.waiting}</td>
+    </tr>`).join('');
+    }
+
+    // ── GANTT helpers ─────────────────────────────────────────────────────────────
+    const COLORS = ['#4af0a0','#4ab4f0','#f0a04a','#a78bfa','#f472b6','#34d399','#60a5fa','#fbbf24','#c084fc','#fb7185','#2dd4bf','#818cf8','#fb923c','#e879f9','#a3e635'];
+
+    function parseEntries(data) {
+        let e = [];
+        if (Array.isArray(data))                              e = data;
+        else if (data.entries && Array.isArray(data.entries)) e = data.entries;
+        else if (data.gantt   && Array.isArray(data.gantt))   e = data.gantt;
+        else e = Object.entries(data).filter(([k])=>!['algorithm','quantum'].includes(k)).flatMap(([pid,s])=>Array.isArray(s)?s.map(x=>({...x,pid})):[]);
+
+        return e.map(x=>({
+            pid:   String(x.pid ?? x.process ?? x.id ?? '?'),
+            start: +(x.start ?? x.start_time ?? x.begin ?? 0),
+            end:   +(x.end   ?? x.end_time   ?? x.finish ?? ((x.start||0)+(x.duration||1))),
+        })).filter(x=>x.end>x.start).sort((a,b)=>a.start-b.start);
+    }
+
+    function ticks(maxT, toX, H, PT, PB) {
+        const step = maxT<=20?1:maxT<=60?5:maxT<=200?10:25;
+        let s='';
+        for(let t=0;t<=maxT;t+=step){
+            const x=toX(t).toFixed(1);
+            s+=`<line x1="${x}" y1="${PT-6}" x2="${x}" y2="${H-PB+4}" stroke="#1e2330" stroke-width="1"/>`;
+            s+=`<text x="${x}" y="${H-PB+16}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#475569">${t}</text>`;
+        }
+        return s;
+    }
+
+    function bindTips(container) {
+        container.addEventListener('mousemove', e=>{
+            if(e.target.tagName==='rect' && e.target.dataset.pid){
+                const d=e.target.dataset;
+                showTip(`P${d.pid} &nbsp;|&nbsp; ${d.start} → ${d.end} &nbsp;(${+d.end-+d.start} ticks)`);
+            } else hideTip();
+        });
+        container.addEventListener('mouseleave', hideTip);
+    }
+
+    // ── GANTT ─────────────────────────────────────────────────────────────────────
+    function renderGantt(data) {
+        $('sec-gantt').classList.add('visible');
+        const entries = parseEntries(data);
+        if(!entries.length){ $('scroll-multi').innerHTML=$('scroll-single').innerHTML='<div class="empty-notice">No Gantt entries found.</div>'; return; }
+
+        const maxT    = Math.max(...entries.map(e=>e.end));
+        const pids    = [...new Set(entries.map(e=>e.pid))].sort((a,b)=>+a-+b);
+        const color   = {};
+        pids.forEach((p,i)=>{ color[p]=COLORS[i%COLORS.length]; });
+        $('badge-gantt').textContent = `${pids.length} processes · ${maxT} ticks`;
+
+        // ── View 1: per-process rows ──
+        (()=>{
+            const PL=64,PR=20,PT=24,PB=36,RH=30,RG=6;
+            const W=Math.max(800,maxT*20);
+            const H=PT+pids.length*(RH+RG)+PB;
+            const toX=t=>PL+t*(W-PL-PR)/maxT;
+
+            let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+            s+=ticks(maxT,toX,H,PT,PB);
+
+            pids.forEach(pid=>{
+                const y=PT+pids.indexOf(pid)*(RH+RG);
+                s+=`<text x="${PL-10}" y="${(y+RH/2+4).toFixed(1)}" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="${color[pid]}">P${pid}</text>`;
+            });
+
+            entries.forEach(e=>{
+                const x=toX(e.start), w=Math.max(2,toX(e.end)-toX(e.start)-1);
+                const y=PT+pids.indexOf(e.pid)*(RH+RG);
+                s+=`<rect x="${x.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${RH}" rx="3" fill="${color[e.pid]}" fill-opacity="0.85" data-pid="${e.pid}" data-start="${e.start}" data-end="${e.end}" style="cursor:pointer"/>`;
+                if(w>32) s+=`<text x="${(x+w/2).toFixed(1)}" y="${(y+RH/2+4).toFixed(1)}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#0d0f14" font-weight="600" pointer-events="none">${e.start}–${e.end}</text>`;
+            });
+
+            s+=`<text x="${((PL+(W-PL-PR)/2)).toFixed(1)}" y="${H-4}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="10" fill="#334155">Time (ticks)</text>`;
+            s+='</svg>';
+            $('scroll-multi').innerHTML=s;
+            bindTips($('scroll-multi').querySelector('svg'));
+        })();
+
+        // ── View 2: single timeline ──
+        (()=>{
+            const PL=20,PR=20,PT=46,PB=56,RH=40;
+            const W=Math.max(800,maxT*20);
+            const H=PT+RH+PB;
+            const toX=t=>PL+t*(W-PL-PR)/maxT;
+            const step=maxT<=20?1:maxT<=60?5:maxT<=200?10:25;
+
+            let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+            // tick labels above bar
+            for(let t=0;t<=maxT;t+=step){
+                const x=toX(t).toFixed(1);
+                s+=`<line x1="${x}" y1="${PT-4}" x2="${x}" y2="${PT+RH+4}" stroke="#1e2330" stroke-width="1"/>`;
+                s+=`<text x="${x}" y="${PT-10}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#475569">${t}</text>`;
+            }
+
+            // background track
+            s+=`<rect x="${toX(0).toFixed(1)}" y="${PT}" width="${(toX(maxT)-toX(0)).toFixed(1)}" height="${RH}" rx="4" fill="#1a1e28"/>`;
+
+            // segments
+            entries.forEach(e=>{
+                const x=toX(e.start), w=Math.max(1,toX(e.end)-toX(e.start));
+                s+=`<rect x="${x.toFixed(1)}" y="${PT}" width="${w.toFixed(1)}" height="${RH}" fill="${color[e.pid]}" fill-opacity="0.88" data-pid="${e.pid}" data-start="${e.start}" data-end="${e.end}" style="cursor:pointer"/>`;
+                if(w>18) s+=`<text x="${(x+w/2).toFixed(1)}" y="${(PT+RH/2+4).toFixed(1)}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#0d0f14" font-weight="600" pointer-events="none">P${e.pid}</text>`;
+            });
+
+            s+=`<rect x="${toX(0).toFixed(1)}" y="${PT}" width="${(toX(maxT)-toX(0)).toFixed(1)}" height="${RH}" rx="4" fill="none" stroke="#252a38" stroke-width="1"/>`;
+
+            // legend below
+            const itemW=54, legendX=(W-pids.length*itemW)/2, ly=PT+RH+20;
+            pids.forEach((pid,i)=>{
+                const lx=legendX+i*itemW;
+                s+=`<rect x="${lx.toFixed(1)}" y="${ly}" width="10" height="10" rx="2" fill="${color[pid]}"/>`;
+                s+=`<text x="${(lx+14).toFixed(1)}" y="${ly+9}" font-family="IBM Plex Mono,monospace" font-size="10" fill="#94a3b8">P${pid}</text>`;
+            });
+
+            s+='</svg>';
+            $('scroll-single').innerHTML=s;
+            bindTips($('scroll-single').querySelector('svg'));
+        })();
+    }
+
+    // ── WFG ───────────────────────────────────────────────────────────────────────
+    function renderWFG(data) {
+        $('sec-wfg').classList.add('visible');
+
+        let nodes = data.nodes || [];
+        let edges = data.edges || data.links || data.arcs || [];
+        const hasCycle = data.has_cycle ?? data.cycle ?? data.deadlock ?? false;
+        if(hasCycle) $('deadlock-banner').style.display='';
+
+        // Derive edges from wait_for field if no explicit edges provided
+        if(!edges.length && nodes.length && nodes[0].wait_for !== undefined) {
+            edges = nodes
+                .filter(n => n.wait_for !== -1 && n.wait_for !== null && n.wait_for !== undefined)
+                .map(n => ({ from: String(n.pid ?? n.id), to: String(n.wait_for) }));
+        }
+
+        // Derive process nodes from edges if needed
+        if(!nodes.length && edges.length){
+            const ids=new Set();
+            edges.forEach(e=>{ ids.add(String(e.from??e.source??e.src??'')); ids.add(String(e.to??e.target??e.dst??'')); });
+            ids.delete('');
+            nodes=[...ids].map(id=>({id}));
+        }
+        if(!nodes.length){ $('wfg-wrap').innerHTML='<div class="empty-notice">No graph data found.</div>'; return; }
+
+        // Keep only process nodes (drop resource-type nodes if present)
+        nodes = nodes.filter(n=>(n.type??'process')!=='resource').map(n=>({id:String(n.id??n.pid??n.name??n)}));
+        const nodeSet = new Set(nodes.map(n=>n.id));
+
+        edges = edges.map(e=>({
+            from: String(e.from??e.source??e.src),
+            to:   String(e.to??e.target??e.dst),
+        })).filter(e=>e.from&&e.to&&e.from!==e.to&&nodeSet.has(e.from)&&nodeSet.has(e.to));
+
+        $('badge-wfg').textContent=`${nodes.length} processes · ${edges.length} edges`;
+
+        // ── Cycle detection (DFS) ──────────────────────────────────────────────────
+        const cycleNodes=new Set(), cycleEdges=new Set();
+        {
+            const adj=Object.fromEntries(nodes.map(n=>[n.id,[]]));
+            edges.forEach(e=>{ adj[e.from].push(e.to); });
+            const vis={}, stk={}, par={};
+            function dfs(v){
+                vis[v]=stk[v]=true;
+                for(const w of adj[v]){
+                    if(!vis[w]){ par[w]=v; dfs(w); }
+                    else if(stk[w]){
+                        cycleNodes.add(w); cycleNodes.add(v); cycleEdges.add(v+'->'+w);
+                        let c=v;
+                        while(c!==w && par[c]!==undefined){ cycleNodes.add(par[c]); cycleEdges.add(par[c]+'->'+c); c=par[c]; }
+                    }
+                }
+                stk[v]=false;
+            }
+            nodes.forEach(n=>{ if(!vis[n.id]) dfs(n.id); });
+        }
+
+        // ── Layout: circle ─────────────────────────────────────────────────────────
+        const n=nodes.length;
+        const SW=Math.min(800, Math.max(480, n*90));
+        const SH=Math.min(680, Math.max(400, n*70));
+        const CX=SW/2, CY=SH/2;
+        const R=Math.min(CX,CY)-72;
+        const NR=24; // node radius
+
+        const pos={};
+        nodes.forEach((nd,i)=>{
+            const a=(2*Math.PI*i/n)-Math.PI/2;
+            pos[nd.id]={ x:CX+R*Math.cos(a), y:CY+R*Math.sin(a) };
+        });
+
+        let s=`<svg viewBox="0 0 ${SW} ${SH}" width="${SW}" height="${SH}" xmlns="http://www.w3.org/2000/svg">`;
+        s+=`<defs>
+    <marker id="arr-n" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#4ab4f0"/></marker>
+    <marker id="arr-c" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#f05a4a"/></marker>
+    <filter id="gr"><feGaussianBlur stdDeviation="3" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+  </defs>`;
+
+        // Edges
+        edges.forEach(e=>{
+            const a=pos[e.from], b=pos[e.to]; if(!a||!b) return;
+            const cyc=cycleEdges.has(e.from+'->'+e.to);
+            const col=cyc?'#f05a4a':'#4ab4f0';
+            const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy);
+            const nx=dx/len, ny=dy/len;
+            // slight offset for bidirectional pairs
+            const bi=edges.some(f=>f.from===e.to&&f.to===e.from);
+            const ox=bi?-ny*5:0, oy=bi?nx*5:0;
+            const x1=(a.x+nx*(NR+2)+ox).toFixed(1), y1=(a.y+ny*(NR+2)+oy).toFixed(1);
+            const x2=(b.x-nx*(NR+7)+ox).toFixed(1), y2=(b.y-ny*(NR+7)+oy).toFixed(1);
+            s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${cyc?2.5:1.5}" stroke-opacity="0.9" marker-end="url(#${cyc?'arr-c':'arr-n'})"${cyc?' filter="url(#gr)"':''}/>`;
+        });
+
+        // Nodes
+        nodes.forEach(nd=>{
+            const p=pos[nd.id];
+            const cyc=cycleNodes.has(nd.id);
+            s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${NR}" fill="${cyc?'rgba(240,90,74,0.20)':'rgba(74,180,240,0.10)'}" stroke="${cyc?'#f05a4a':'#4ab4f0'}" stroke-width="${cyc?2.5:1.5}"${cyc?' filter="url(#gr)"':''}/>`;
+            s+=`<text x="${p.x.toFixed(1)}" y="${(p.y+4).toFixed(1)}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="${cyc?'#f05a4a':'#e2e8f0'}">P${nd.id}</text>`;
+        });
+
+        s+='</svg>';
+        $('wfg-wrap').innerHTML=s;
+
+        $('wfg-legend').innerHTML=`
+    <div class="legend-item"><div class="legend-dot" style="background:#4ab4f0;opacity:.7"></div>Waiting process</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f05a4a;opacity:.7"></div>In deadlock cycle</div>
+    <div class="legend-item" style="gap:6px;color:var(--muted)">→ P<sub>i</sub> waits for P<sub>j</sub></div>
+  `;
+    }
+</script>
+</body>
+</html>
