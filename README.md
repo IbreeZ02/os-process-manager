@@ -58,7 +58,7 @@ scheduling logic, IPC, and more
 - The visualizer is static (no live updates).
 - Only a subset of possible system calls are implemented.
 
-# ⚙️ Installation & Requirements, Build & Run
+# ⚙️ Build & Run
 
 **Requirements**
 
