@@ -4,9 +4,8 @@
 
 A process Manager in C presenting important os and system concepts and problems.
 
-- IPC, Interrupts, and system calls - handling synchronous and asynchronous events
+- IPC, Interrupts, and system calls handling synchronous and asynchronous events
 - cycle detection in a wait‑for graph with a simple recovery strategy
-- Interactive visualizer – export simulation data to JSON and view Gantt charts, process stats, and wait‑for graphs in your browser
 
 # ℹ️ Overview
 
@@ -14,14 +13,14 @@ The process manager is encapsulated in a simple modular-based architecture, sepa
 
 ### Main Features and Functionalities:
 
-1. **Process lifecycle & scheduling** – supports 6 scheduling algorithms (FCFS, SJF, SRTF, Priority preemptive/non‑preemptive, Round Robin).
-2. **Global timer tick** – drives time progression, preemptions, and wake‑ups.
-3. **Interrupt handling** – timer interrupts (for Round Robin) and I/O completion interrupts are raised and processed via an interrupt queue.
-4. **System calls** – simulated `SYS_IO`, `SYS_EXIT`, `SYS_SLEEP`, and `SYS_RECV`; can be randomly triggered during simulation.
-5. **IPC mechanisms** – per‑process mailboxes (point‑to‑point) and a system‑wide message queue (broadcast / any‑to‑any)
-6. **Deadlock detection & recovery** – builds a wait‑for graph from blocked processes, detects cycles, and recovers by terminating the lowest‑priority victim.
-7. **Deadlock test program** – `main_test_deadlock.c` creates a circular wait to demonstrate detection and recovery.
-8. **JSON export & web visualizer** – simulation results (Gantt chart, process statistics, wait‑for graph) are exported as JSON and can be viewed in a browser‑based dashboard.
+1. **Process lifecycle & scheduling**: supports 6 scheduling algorithms (FCFS, SJF, SRTF, Priority preemptive/non‑preemptive, Round Robin).
+2. **Global timer tick**: drives time progression, preemptions, and wake‑ups.
+3. **Interrupt handling**: timer interrupts (for Round Robin) and I/O completion interrupts are raised and processed via an interrupt queue.
+4. **System calls**: simulated `SYS_IO`, `SYS_EXIT`, `SYS_SLEEP`, and `SYS_RECV`; can be randomly triggered during simulation.
+5. **IPC mechanisms**: per‑process mailboxes (point‑to‑point) and a system‑wide message queue (broadcast / any‑to‑any)
+6. **Deadlock detection & recovery**: builds a wait‑for graph from blocked processes, detects cycles, and recovers by terminating the lowest‑priority victim.
+7. **Deadlock test program**: `main_test_deadlock.c` creates a circular wait to demonstrate detection and recovery.
+8. **JSON export & web visualizer**: simulation results (Gantt chart, process statistics, wait‑for graph) are exported as JSON and can be viewed in a browser‑based dashboard.
 
 ### Run Examples
 
@@ -33,15 +32,15 @@ The process manager is encapsulated in a simple modular-based architecture, sepa
 
 ### some Design Choices
 
-- **Single wait queue for both I/O and IPC blocking** — simplifies the scheduler tick
+- **Single wait queue for both I/O and IPC blocking**: simplifies the scheduler tick
   loop; `wait_for` and `io_remaining` fields on the PCB distinguish the two cases.
-- **WFG over RAG** — a Resource Allocation Graph requires tracking resource instances
+- **WFG over RAG**: a Resource Allocation Graph requires tracking resource instances
   separately; since all blocking here is process-to-process (IPC), a simpler wait-for
   graph is sufficient and easier to extend.
-- **Interrupt queue over direct calls** — raising an interrupt and processing it in the
+- **Interrupt queue over direct calls**: raising an interrupt and processing it in the
   next tick decouples detection (in the tick loop) from handling (in the interrupt
   handler), mirroring how real hardware interrupts work.
-- **Fixed-size mailbox, dynamic message queue** — mailbox models a single hardware
+- **Fixed-size mailbox, dynamic message queue**: mailbox models a single hardware
   register (one slot, blocks on full); the queue models a software buffer for
   broadcast/any-to-any messaging.
 
