@@ -10,12 +10,7 @@ A process Manager in C presenting important os and system concepts and problems.
 
 # ℹ️ Overview
 
-The Process manager is encapsulated in a simple modular-based architecture, separated by responsiblity
-over 25 source file.
-This project simulates a process scheduler that manages process lifecycles, supports
-multiple scheduling algorithms, handles interrupts and system calls, implements two IPC mechanisms,
-and includes deadlock detection. It is built as a modular C program with separate components for queues,
-scheduling logic, IPC, and more
+The process manager is encapsulated in a simple modular-based architecture, separated by responsibility over 25 source files. This project simulates a process scheduler that manages process lifecycles, supports multiple scheduling algorithms, handles interrupts and system calls, implements two IPC mechanisms, and includes deadlock detection. It is built as a modular C program with separate components for queues, scheduling logic, IPC, and more.
 
 ### Main Features and Functionalities:
 
